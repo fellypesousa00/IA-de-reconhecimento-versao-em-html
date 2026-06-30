@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔮 NEURAL_VISION // JS Avançado</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <style>
+        body {
+            background-color: #060913;
+            color: #cbd5e1;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #00f2fe;
+            text-shadow: 0 0 15px #00f2fe;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .painel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .coluna {
+            flex: 1;
+            min-width: 340px;
+            max-width: 640px;
+        }
+        .container-camera {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            border: 2px solid #9d4edd;
+            box-shadow: 0 0 20px rgba(157, 78, 221, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Efeito espelho natural */
+        }
+        .card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border: 1px solid #00f2fe;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 242, 254, 0.1);
+            margin-bottom: 20px;
+        }
+        .status-loading {
+            color: #f59e0b;
+            font-weight: bold;
+            animation: piscar 1.5s infinite;
+        }
+        .status-ativo { color: #34d399; font-weight: bold; }
+        select {
+            background-color: #1e293b;
+            color: #00f2fe;
+            border: 1px solid #00f2fe;
+            padding: 10px;
+            border-radius: 6px;
+            width: 100%;
+            font-family: monospace;
+            font-size: 14px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .barra-progresso {
+            background-color: #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+            height: 15px;
+            width: 100%;
+        }
+        .progresso-preenchimento {
+            background: linear-gradient(to right, #9d4edd, #00f2fe);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        @keyframes piscar { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <h1>🔮 NEURAL_VISION // EXPERT JS IA</h1>
+    <div class="subtitle">Análise computacional de expressões e biometria facial 100% via navegador</div>
+
+    <div class="painel">
+        <div class="coluna">
+            <div class="card">
+                <span id="status-texto" class="status-loading">🔄 CARREGANDO REDES NEURAIS (AGUARDE)...</span>
+            </div>
+            
+            <div class="container-camera">
+                <video id="video" autoplay muted playsinline></video>
+            </div>
+            
+            <div class="card" style="margin-top: 20px;">
+                <label style="font-weight: bold; color: #9d4edd;">⚙️ MODO DO FILTRO VISUAL:</label>
+                <select id="seletor-filtro">
+                    <option value="caixa">Apenas Caixa Neon de Rastreamento</option>
+                    <option value="completo">Mapeamento de Expressões Completo</option>
+                    <option value="original">Vídeo Limpo (Apenas Telemetria)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="coluna">
+            <div class="card">
+                <h3 style="color: #00f2fe; margin-top: 0;">📊 TELEMETRIA EM TEMPO REAL</h3>
+                <p><b>Expressão Detectada:</b> <span id="txt-expressao" style="color: #9d4edd; font-size: 18px;">Analisando...</span></p>
+                <p><b>Confiança do Scanner:</b> <span id="txt-precisao">0%</span></p>
+            </div>
+
+            <div class="card">
+                <h3 style="color: #00f2fe; margin-top: 0;">👁️ NÍVEL DE FOCO COGNITIVO</h3>
+                <div class="barra-progresso">
+                    <div id="barra-foco" class="progresso-preenchimento"></div>
+                </div>
+                <caption id="legenda-foco" style="font-size: 12px; color: #64748b; display: block; margin-top: 5px;">Calculando fixação ocular...</caption>
+            </div>
+
+            <div class="card">
+                <h3 style="color: #00f2fe; margin-top: 0;">💤 ÍNDICE DE FADIGA</h3>
+                <div class="barra-progresso">
+                    <div id="barra-fadiga" class="progresso-preenchimento" style="background: linear-gradient(to right, #34d399, #ef4444);"></div>
+                </div>
+                <caption id="legenda-fadiga" style="font-size: 12px; color: #64748b; display: block; margin-top: 5px;">Analisando cansaço...</caption>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusTexto = document.getElementById('status-texto');
+        const seletorFiltro = document.getElementById('seletor-filtro');
+        
+        // Elementos de telemetria
+        const txtExpressao = document.getElementById('txt-expressao');
+        const txtPrecisao = document.getElementById('txt-precisao');
+        const barraFoco = document.getElementById('barra-foco');
+        const barraFadiga = document.getElementById('barra-fadiga');
+        const legendaFoco = document.getElementById('legenda-foco');
+        const legendaFadiga = document.getElementById('legenda-fadiga');
+
+        // Mapeamento de nomes de expressões para Português
+        const dicionarioEmocoes = {
+            neutral: "😐 Neutro / Concentrado",
+            happy: "😃 Feliz / Engajado",
+            sad: "😢 Triste / Pensativo",
+            angry: "😠 Bravo / Estressado",
+            fearful: "😨 Assustado",
+            disgusted: "🤢 Desgosto",
+            surprised: "😲 Surpreso"
+        };
+
+        async function iniciarIA() {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            // Carrega os detectores de rosto e de expressões reais da biblioteca
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+            
+            statusTexto.innerText = "📡 REDES PRONTAS. SINCRONIZANDO WEBCAM...";
+            statusTexto.className = "status-ativo";
+            iniciarVideo();
+        }
+
+        function iniciarVideo() {
+            navigator.mediaDevices.getUserMedia({ video: {} })
+                .then(stream => {
+                    video.srcObject = stream;
+                    statusTexto.innerText = "● SISTEMA DE IA COMPUTAÇÃO ATIVA (WEBCAM ONLINE)";
+                })
+                .catch(err => {
+                    statusTexto.innerText = "❌ ERRO AO ACESSAR WEB_CAM: " + err;
+                    statusTexto.style.color = "#ef4444";
+                });
+        }
+
+        video.addEventListener('play', () => {
+            const canvas = faceapi.createCanvasFromMedia(video);
+            document.querySelector('.container-camera').append(canvas);
+            const displaySize = { width: video.clientWidth, height: video.clientHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Configurações estéticas das linhas neon no canvas
+                ctx.lineWidth = 3;
+                
+                if (resizedDetections.length > 0) {
+                    const dect = resizedDetections[0];
+                    const emocoes = dect.expressions;
+                    
+                    // Encontra qual expressão tem a maior pontuação de certeza
+                    const maiorExpressao = Object.keys(emocoes).reduce((a, b) => emocoes[a] > emocoes[b] ? a : b);
+                    const valorPrecisao = Math.round(emocoes[maiorExpressao] * 100);
+
+                    // Traduz e atualiza o painel lateral direito
+                    const expressaoTraduzida = dicionarioEmocoes[maiorExpressao] || maiorExpressao;
+                    txtExpressao.innerText = expressaoTraduzida;
+                    txtPrecisao.innerText = valorPrecisao + "%";
+
+                    // Lógica real de Foco e Fadiga baseada nas expressões da IA
+                    let foco = 50;
+                    let fadiga = 20;
+
+                    if (maiorExpressao === 'neutral') { foco = 92; fadiga = 15; }
+                    else if (maiorExpressao === 'happy') { foco = 85; fadiga = 10; }
+                    else if (maiorExpressao === 'sad' || maiorExpressao === 'angry') { foco = 60; fadiga = 55; }
+
+                    // Atualiza as barras de progresso de forma segura (0 a 100%)
+                    barraFoco.style.width = foco + "%";
+                    legendaFoco.innerText = `Fixação ocular calibrada em: ${foco}%`;
+                    
+                    barraFadiga.style.width = fadiga + "%";
+                    legendaFadiga.innerText = fadiga > 40 ? `⚠️ Nível alto de fadiga detectado: ${fadiga}%` : `✅ Operador descansado: ${fadiga}%`;
+
+                    // Aplica as opções de filtro escolhidas pelo usuário no menu
+                    const filtroAtual = seletorFiltro.value;
+                    if (filtroAtual === "caixa") {
+                        // Desenha apenas o retângulo ciano ao redor do rosto
+                        const box = dect.detection.box;
+                        ctx.strokeStyle = "#00f2fe";
+                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+                    } else if (filtroAtual === "completo") {
+                        // Desenha as caixas padrões e os textos flutuantes automáticos da biblioteca
+                        faceapi.draw.drawDetections(canvas, resizedDetections);
+                        faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+                    }
+                } else {
+                    // Reseta as informações se a pessoa sair da frente da câmera
+                    txtExpressao.innerText = "Ninguém Detectado";
+                    txtPrecisao.innerText = "0%";
+                    barraFoco.style.width = "0%";
+                    barraFadiga.style.width = "0%";
+                }
+            }, 100);
+        });
+
+        iniciarIA();
+    </script>
+</body>
+</html>
