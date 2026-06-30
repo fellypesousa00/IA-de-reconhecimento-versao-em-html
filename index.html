@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔮 NEURAL_VISION // JS Avançado</title>
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <title>🔮 NEURAL_VISION // EXPERT JS IA</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <style>
         body {
             background-color: #060913;
@@ -103,7 +103,7 @@
 <body>
 
     <h1>🔮 NEURAL_VISION // EXPERT JS IA</h1>
-    <div class="subtitle">Análise computacional de expressões e biometria facial 100% via navegador</div>
+    <div class="subtitle">Análise computacional de expressões e biometria facial 100% via navegador (JS + face-api)</div>
 
     <div class="painel">
         <div class="coluna">
@@ -175,14 +175,22 @@
         };
 
         async function iniciarIA() {
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-            // Carrega os detectores de rosto e de expressões reais da biblioteca
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+            // MUDANÇA CRÍTICA: Servidor de pesos globais e robustos (raw.githubusercontent oficial)
+            const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/';
             
-            statusTexto.innerText = "📡 REDES PRONTAS. SINCRONIZANDO WEBCAM...";
-            statusTexto.className = "status-ativo";
-            iniciarVideo();
+            try {
+                // Carrega os detectores de rosto e de expressões reais da biblioteca
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+                
+                statusTexto.innerText = "📡 REDES PRONTAS. SINCRONIZANDO WEBCAM...";
+                statusTexto.className = "status-ativo";
+                iniciarVideo();
+            } catch (erro) {
+                statusTexto.innerText = "❌ ERRO AO CARREGAR REDE NEURAL (Tente HTTPS): " + erro;
+                statusTexto.style.color = "#ef4444";
+                console.error("Erro no face-api:", erro);
+            }
         }
 
         function iniciarVideo() {
@@ -192,7 +200,7 @@
                     statusTexto.innerText = "● SISTEMA DE IA COMPUTAÇÃO ATIVA (WEBCAM ONLINE)";
                 })
                 .catch(err => {
-                    statusTexto.innerText = "❌ ERRO AO ACESSAR WEB_CAM: " + err;
+                    statusTexto.innerText = "❌ ERRO AO ACESSAR WEB_CAM (Permissão negada?): " + err;
                     statusTexto.style.color = "#ef4444";
                 });
         }
@@ -203,6 +211,7 @@
             const displaySize = { width: video.clientWidth, height: video.clientHeight };
             faceapi.matchDimensions(canvas, displaySize);
 
+            // Rastreamento rápido frame por frame (a cada 100ms)
             setInterval(async () => {
                 const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
                 const resizedDetections = faceapi.resizeResults(detections, displaySize);
@@ -210,9 +219,6 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Configurações estéticas das linhas neon no canvas
-                ctx.lineWidth = 3;
-                
                 if (resizedDetections.length > 0) {
                     const dect = resizedDetections[0];
                     const emocoes = dect.expressions;
@@ -234,7 +240,6 @@
                     else if (maiorExpressao === 'happy') { foco = 85; fadiga = 10; }
                     else if (maiorExpressao === 'sad' || maiorExpressao === 'angry') { foco = 60; fadiga = 55; }
 
-                    // Atualiza as barras de progresso de forma segura (0 a 100%)
                     barraFoco.style.width = foco + "%";
                     legendaFoco.innerText = `Fixação ocular calibrada em: ${foco}%`;
                     
@@ -244,17 +249,17 @@
                     // Aplica as opções de filtro escolhidas pelo usuário no menu
                     const filtroAtual = seletorFiltro.value;
                     if (filtroAtual === "caixa") {
-                        // Desenha apenas o retângulo ciano ao redor do rosto
+                        // Desenha apenas o retângulo ciano neon
                         const box = dect.detection.box;
                         ctx.strokeStyle = "#00f2fe";
+                        ctx.lineWidth = 3;
                         ctx.strokeRect(box.x, box.y, box.width, box.height);
                     } else if (filtroAtual === "completo") {
-                        // Desenha as caixas padrões e os textos flutuantes automáticos da biblioteca
+                        // Desenha as caixas padrões e os textos flutuantes automáticos
                         faceapi.draw.drawDetections(canvas, resizedDetections);
                         faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
                     }
                 } else {
-                    // Reseta as informações se a pessoa sair da frente da câmera
                     txtExpressao.innerText = "Ninguém Detectado";
                     txtPrecisao.innerText = "0%";
                     barraFoco.style.width = "0%";
